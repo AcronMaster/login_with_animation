@@ -18,9 +18,28 @@ class _LoginScreenState extends State<LoginScreen> {
   SMITrigger? trigSuccess; //Se emociona
   SMITrigger? trigFail; //Se pone triste
 
+  //1)FocusNode
+  final emailFocus = FocusNode();
+  final passFocus = FocusNode();
+
+  //2)Listeners
+  @override
+  void initState() {
+    super.initState();
+    emailFocus.addListener(() {
+      if (emailFocus.hasFocus) {
+        isHandsUp?.change(false); //Manos abajo en email
+      }
+    });
+    passFocus.addListener(() {
+      //Manos arriba en password
+      isHandsUp?.change(passFocus.hasFocus);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
-    //Para obtener el tamaño de la pantalla del disp.
+    //Para obtener el tamaño de la pantalla del dispositivo
     final Size miTam = MediaQuery.of(context).size;
     return Scaffold(
       //Evita nudge o camaras frontales para moviles
@@ -59,10 +78,12 @@ class _LoginScreenState extends State<LoginScreen> {
 
               //Campo de texto de email
               TextField(
+                //3) Asignas el focusNode al TextFile
+                focusNode: emailFocus,
                 onChanged: (value) {
                   if (isHandsUp != null) {
                     //No tapas los ojos al escribir email
-                    isHandsUp!.change(false);
+                    //isHandsUp!.change(false);
                   }
                   if (isChecking == null) return;
                   //Activa el modo chismoso
@@ -82,10 +103,11 @@ class _LoginScreenState extends State<LoginScreen> {
               const SizedBox(height: 10),
               //Campo de contraseña
               TextField(
+                focusNode: passFocus,
                 onChanged: (value) {
                   if (isChecking != null) {
                     //No actividar el modo chismoso
-                    isChecking!.change(false);
+                    //isChecking!.change(false);
                   }
                   if (isHandsUp == null) return;
                   //Activa el modo privado
@@ -128,7 +150,7 @@ class _LoginScreenState extends State<LoginScreen> {
               MaterialButton(
                 minWidth: miTam.width,
                 height: 50,
-                color: Colors.red,
+                color: const Color.fromARGB(255, 179, 16, 4),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadiusGeometry.circular(12),
                 ),
@@ -164,5 +186,13 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
       ),
     );
+  }
+
+  //Liberacion de recursos/ limpieza de focos
+  @override
+  void dispose() {
+    emailFocus.dispose();
+    passFocus.dispose();
+    super.dispose();
   }
 }
