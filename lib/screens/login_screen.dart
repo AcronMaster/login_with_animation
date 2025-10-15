@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:rive/rive.dart';
+//3.1 Importar libreria para timer
+import 'dart:async';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -17,18 +19,26 @@ class _LoginScreenState extends State<LoginScreen> {
   SMIBool? isHandsUp; // Se tapa los ojos
   SMITrigger? trigSuccess; //Se emociona
   SMITrigger? trigFail; //Se pone triste
+  //2.1Variable para recorrido de la mirada
+  SMINumber? numLook; // 0..80 a tu asset
 
-  //1)FocusNode
+  //1.1)FocusNode
   final emailFocus = FocusNode();
   final passFocus = FocusNode();
 
-  //2)Listeners
+  //3.2 Timer para detner la mirada al dejar de teclear
+  Timer? _typingDebounce;
+
+  //1.2)Listeners
   @override
   void initState() {
     super.initState();
     emailFocus.addListener(() {
       if (emailFocus.hasFocus) {
         isHandsUp?.change(false); //Manos abajo en email
+        //2.2 Mirada neutral al enfocar email
+        numLook?.value = 50.0;
+        isHandsUp?.change(false);
       }
     });
     passFocus.addListener(() {
@@ -70,7 +80,9 @@ class _LoginScreenState extends State<LoginScreen> {
                     isHandsUp = controller!.findSMI("isHandsUp");
                     trigSuccess = controller!.findSMI("trigSuccess");
                     trigFail = controller!.findSMI("trigFail");
-                  },
+                    //2.3 Enlazar variable con la animacion
+                    numLook = controller!.findSMI("numLook");
+                  }, // Clamp
                 ),
               ),
               //Espacio entre el oso y el email
@@ -78,12 +90,29 @@ class _LoginScreenState extends State<LoginScreen> {
 
               //Campo de texto de email
               TextField(
-                //3) Asignas el focusNode al TextFile
+                //1.3) Asignas el focusNode al TextFile
                 focusNode: emailFocus,
                 onChanged: (value) {
                   if (isHandsUp != null) {
-                    //No tapas los ojos al escribir email
-                    //isHandsUp!.change(false);
+                    //2.4 Implementado numLook
+                    //Estoy escribiendo
+                    isChecking!.change(true);
+
+                    //Ajuste de limites de 0 a 100
+                    //80 es una medida de calibración
+                    final look = (value.length / 80 * 100.0).clamp(0.0, 100.0);
+                    numLook?.value = look;
+
+                    //3.3 Si vuelve a teclaer , reinicia el contador
+                    _typingDebounce
+                        ?.cancel(); //Cancela cualquier timer existente
+                    _typingDebounce = Timer(const Duration(seconds: 3), () {
+                      if (!mounted) {
+                        return; //Si la pantalla se cierra
+                      }
+                      //Mirada neutra
+                      isChecking?.change(false);
+                    });
                   }
                   if (isChecking == null) return;
                   //Activa el modo chismoso
@@ -193,6 +222,7 @@ class _LoginScreenState extends State<LoginScreen> {
   void dispose() {
     emailFocus.dispose();
     passFocus.dispose();
+    _typingDebounce?.cancel();
     super.dispose();
   }
 }
