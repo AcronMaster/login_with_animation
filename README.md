@@ -1,6 +1,12 @@
-# login_with_animation
+# :teddy_bear: Animated Login Screen — Flutter + Rive
 
-A new Flutter project.
+Una pantalla de inicio de sesión animada desarrollada en Flutter, que utiliza Rive para dar vida a un personaje interactivo que reacciona a las acciones del usuario:
+- Sigue la escritura con la mirada :eyes:
+- Se tapa los ojos al escribir la contraseña :see_no_evil:
+- Muestra emociones al inicair sesión :smile: :cry:
+
+# :rocket: Características principales
+-
 
 ## Getting Started
 
