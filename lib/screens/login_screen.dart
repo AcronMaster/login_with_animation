@@ -12,6 +12,8 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   bool _isObscure = true; // Estado inicial: contraseña oculta
+  //5.1 Se agrega la variable de de cargando
+  bool _isLoading = false;
   //Cerebro de la logica de las animaciones
   StateMachineController? controller;
   //SMI: State Machine Input
@@ -26,7 +28,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final emailFocus = FocusNode();
   final passFocus = FocusNode();
 
-  //3.2 Timer para detner la mirada al dejar de teclear
+  //3.2 Timer para detener la mirada al dejar de teclear
   Timer? _typingDebounce;
 
   //4.1 Controllers
@@ -52,15 +54,36 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   //4.4 Acción al boton
-  void _onLogin() {
+  void _onLogin() async {
+    //5.2 Evitar que se presiene el boton de login
+    if (_isLoading) return;
+    // 5.3 Activar estado de carga y actualizar UI
+    setState(() {
+      _isLoading = true;
+    });
+    // trim (recortar) sirve para eliminar espacios en un campo de texto
     final email = emailCtrl.text.trim();
     final pass = passCtrl.text;
 
-    //Recalcular errores
-    final eError = isValidEmail(email) ? null : 'Email inválido';
-    final pError = isValidPassword(pass)
-        ? null
-        : 'Minimo 8 caracteres, 1 mayúscula, 1 minúscula y 1 caracter especial';
+    // Recalcular errores dinámicamente (solo el primero aplicable)
+    String? eError;
+    if (email.isNotEmpty && !isValidEmail(email)) {
+      eError = 'Email inválido';
+    }
+
+    String? pError;
+    if (pass.isNotEmpty && pass.length < 8) {
+      pError = 'Debe tener al menos 8 caracteres';
+    } else if (!RegExp(r'[A-Z]').hasMatch(pass)) {
+      pError = 'Debe tener una mayúscula';
+    } else if (!RegExp(r'[a-z]').hasMatch(pass)) {
+      pError = 'Debe tener una minúscula';
+    } else if (!RegExp(r'\d').hasMatch(pass)) {
+      pError = 'Debe incluir un número';
+    } else if (!RegExp(r'[^A-Za-z0-9]').hasMatch(pass)) {
+      pError = 'Debe incluir un carácter especial';
+    }
+
     //4.5Para avisar que hubo un cambio
     setState(() {
       emailError = eError;
@@ -73,12 +96,26 @@ class _LoginScreenState extends State<LoginScreen> {
     isChecking?.change(false);
     isHandsUp?.change(false);
     numLook?.value = 50.0; //Mirada neutarl
+    // 5.4 Esperar hasta el siguiente frame completo antes de disparar el trigger
+    // Esto garantiza que Rive procese la animación de bajar las manos antes del trigger
+    await Future<void>.delayed(
+      const Duration(milliseconds: 600),
+    ); // Le puse esa cantidad porque es el tiempo necesario para la animación de bajar las manos
+
+    // 5.5 Simular tiempo de carga (~1 segundo)
+    await Future.delayed(const Duration(seconds: 1));
 
     //4.7 Activar triggers
     if (eError == null && pError == null) {
       trigSuccess?.fire();
     } else {
       trigFail?.fire();
+    }
+    // 5.6 Desactivar el estado de carga al finalizar
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
 
@@ -151,6 +188,20 @@ class _LoginScreenState extends State<LoginScreen> {
                 onChanged: (value) {
                   //Estoy escribiendo
                   isChecking?.change(true);
+                  // 5.8 Validación dinámica de email mientras se escribe
+                  String? eError;
+                  if (value.isNotEmpty && !isValidEmail(value)) {
+                    eError = 'Email inválido';
+                  }
+
+                  // Se borra el error si el campo esta vacío
+                  if (value.isEmpty) {
+                    eError = null;
+                  }
+
+                  setState(() {
+                    emailError = eError;
+                  });
 
                   //Ajuste de limites de 0 a 100
                   //80 es una medida de calibración
@@ -191,10 +242,29 @@ class _LoginScreenState extends State<LoginScreen> {
                 //4.8 Enlazar controller a texfile
                 controller: passCtrl,
                 onChanged: (value) {
-                  if (isChecking != null) {
-                    //No actividar el modo chismoso
-                    //isChecking!.change(false);
+                  // 5.9 Validación dinámica de password mientras se escribe
+                  String? pError;
+                  if (value.isNotEmpty && value.length < 8) {
+                    pError = 'Debe tener al menos 8 caracteres';
+                  } else if (!RegExp(r'[A-Z]').hasMatch(value)) {
+                    pError = 'Debe tener una mayúscula';
+                  } else if (!RegExp(r'[a-z]').hasMatch(value)) {
+                    pError = 'Debe tener una minúscula';
+                  } else if (!RegExp(r'\d').hasMatch(value)) {
+                    pError = 'Debe incluir un número';
+                  } else if (!RegExp(r'[^A-Za-z0-9]').hasMatch(value)) {
+                    pError = 'Debe incluir un carácter especial';
                   }
+
+                  // Se borra el error si el campo esta vacío
+                  if (value.isEmpty) {
+                    pError = null;
+                  }
+
+                  setState(() {
+                    passError = pError;
+                  });
+
                   if (isHandsUp == null) return;
                   //Activa el modo privado
                   isHandsUp!.change(true);
@@ -243,8 +313,14 @@ class _LoginScreenState extends State<LoginScreen> {
                   borderRadius: BorderRadiusGeometry.circular(12),
                 ),
                 //4.10 LLamar funcion _onLogin
-                onPressed: _onLogin,
-                child: Text("Login", style: TextStyle(color: Colors.white)),
+                // 5.7 Deshabilitar el botón mientras carga
+                onPressed: _isLoading ? null : _onLogin,
+                child: _isLoading
+                    ? const CircularProgressIndicator(color: Colors.blue)
+                    : const Text(
+                        "Login",
+                        style: TextStyle(color: Colors.white),
+                      ),
               ),
               const SizedBox(height: 10),
 
